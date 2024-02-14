@@ -26,7 +26,7 @@ public class CustomerDto {
    //private long customerId;
    //@NotNull and @Size is optional its not a mandatory to give 
     @NotNull
-    @Size(max=20)
+    @Size(max=40)
 	private String mailId;
 	
     @NotNull

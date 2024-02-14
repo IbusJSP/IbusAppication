@@ -1,6 +1,7 @@
 package com.ibus.module;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
@@ -43,7 +44,7 @@ public class Customer {
 	@Column(name="CUSTOMER_ID", nullable=false, updatable=false)
 	private long customerId;
 	
-	@Column(name="MAIL_ID", nullable=false, updatable=false ,length=20)
+	@Column(name="MAIL_ID", nullable=false, updatable=false ,length=40)
 	private String mailId;
 	
 	@Column(name="PASSWORD", nullable=false, length=20)
@@ -83,6 +84,13 @@ public class Customer {
 	
 	@Column(name="FILE_SIZE")
 	private String fileSize;
+	
+	@Column(name = "otp", length = 255)
+	private String otp;
+	
+	@CreatedDate 
+	@Column(name="OTP_GENERATED_DATE_TIME")
+	private LocalDateTime otpGeneratedTime;
 	
 	@OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "ADDRESS_ID",nullable=false)

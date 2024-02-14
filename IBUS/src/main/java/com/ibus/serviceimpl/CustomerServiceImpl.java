@@ -1,14 +1,19 @@
 package com.ibus.serviceimpl;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.Optional;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ibus.dto.CustomerDto;
+import com.ibus.emailservice.EmailService;
 import com.ibus.exception.CustomerException;
 import com.ibus.module.Address;
 import com.ibus.module.Customer;
@@ -27,8 +32,11 @@ public class CustomerServiceImpl  implements CustomerService{
 	
 	private final Logger logger = LoggerFactory.getLogger(CustomerServiceImpl.class);
 	
+	@Autowired
+	private EmailService emailService;
+	 
 	private final CustomerRepository customerRepo;
-
+	
 	//constructor injection is the best practise and we can make data as immutable
     public CustomerServiceImpl(final CustomerRepository customerRepository) {
         this.customerRepo = customerRepository;
@@ -82,18 +90,7 @@ public class CustomerServiceImpl  implements CustomerService{
 	}
 
 
-	//customer log in method
-	@Override
-	public void loginCustomer(String userId, String password) throws CustomerException {
-		
-	    Customer customer = customerRepo.findByUserIdIgnoreCase(userId)
-	            .orElseThrow(() -> CustomerException.invalidLonginCredentials(userId, password));
-
-	    // Check if the provided password matches the stored password
-	    if (!customer.getPassword().equals(password)) {
-	        throw CustomerException.invalidLonginCredentials(userId, password);
-	    }
-	}
+	
 
 	@Override
 	public void resetPassword(String userId, String newPassword) throws CustomerException {
@@ -157,6 +154,72 @@ public class CustomerServiceImpl  implements CustomerService{
 	    // Return the key (file path) for storing in the database
 	    return key; 
 	}
+	
 
+	
+	//checking user id is present in DB
+	@Override
+    public boolean authenticateUser(String userId, String password) {
+		
+		Optional<Customer> optionalCustomer = customerRepo.findByUserIdIgnoreCase(userId);
 
+        // Check if the user exists and the provided password matches then stored password
+        return optionalCustomer.isPresent() && optionalCustomer.get().getPassword().equals(password);
+        
+    }
+
+	//  Logic to Generate a random OTP (6-digit number)
+    @Override
+    public String generateRandomOtp() {
+    	
+     
+        Random random = new Random();
+        int otp = 100000 + random.nextInt(899999);
+        return String.valueOf(otp);
+    }
+
+    //logic to send otp the user mail id
+    @Override
+    public void sendOtpByEmail(String userId, String otp) {
+        Customer customer = customerRepo.findByUserIdIgnoreCase(userId)
+                .orElseThrow(() -> new CustomerException("Customer not found with userId: " + userId));
+
+        // Save the provided OTP and timestamp to the database
+        customer.setOtp(otp);
+        customer.setOtpGeneratedTime(LocalDateTime.now());
+        customerRepo.save(customer);
+
+        // Send OTP via email
+        String subject = " Login OTP ";
+        String body = "Your one time password (OTP) for log in is : " + otp;
+        emailService.sendOtpEmail(customer.getMailId(), subject, body);
+    }
+
+ 
+    
+    //log for the customer
+    @Override
+    public void verifyOtpAndLogin(String userId, String enteredOtp, String password) throws CustomerException {
+        Customer customer = customerRepo.findByUserIdIgnoreCase(userId)
+                .orElseThrow(() -> CustomerException.invalidLonginCredentials(userId, password));
+
+        // Check if the entered OTP matches the stored OTP
+        if (!customer.getOtp().equals(enteredOtp)) {
+            throw new CustomerException("Invalid OTP please enter the correct otp! Thanks");
+        }
+
+        // Check if the provided password matches the stored password
+        if (!customer.getPassword().equals(password)) {
+            throw CustomerException.invalidLonginCredentials(userId, password);
+        }
+
+        // Reset the OTP after successful login
+        customer.setOtp(null);
+        customer.setOtpGeneratedTime(null);
+        customerRepo.save(customer);
+    }
+
+	 
+	 
+	
 }
