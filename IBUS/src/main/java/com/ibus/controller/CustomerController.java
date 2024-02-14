@@ -40,22 +40,6 @@ public class CustomerController {
 	    }
 	}
 
-	
-	
-	//log in for customer
-	@PostMapping("/login")
-	public String loginCustomer(@RequestBody Map<String, String> credentials) {
-	    String userId = credentials.get("userId");
-	    String password = credentials.get("password");
-
-	    try {
-	        customerService.loginCustomer(userId, password);
-	        return "Login successful";
-	    } catch (CustomerException e) {
-	        return "Login failed: " + e.getMessage();
-	    }
-	}
-	
 	@PostMapping("/resetpassword")
 	public ResponseEntity<Object> resetPassword(@RequestBody Map<String, String> credentials) {
 		  
@@ -84,7 +68,49 @@ public class CustomerController {
         } catch (CustomerException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
-	
-	
 	}
+	
+	
+	//generate otp from afridanwar@gmail.com  send to UserId mailid
+	@PostMapping("/generateOtp")
+    public ResponseEntity<Object> generateAndSendOtp(@RequestBody Map<String, String> credentials) 
+	{
+		
+        try {
+        	String userId=credentials.get("userId");
+        	String password= credentials.get("password");
+        	
+            // Check if the userId and password are correct before generating OTP
+            if (customerService.authenticateUser(userId, password)) {
+                // Generate OTP
+                String generatedOtp = customerService.generateRandomOtp();
+
+                // Send OTP via email
+                customerService.sendOtpByEmail(userId, generatedOtp);
+
+                return ResponseEntity.status(HttpStatus.OK).body("OTP generated and sent successfully");
+            }
+            else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+            }
+        } catch (CustomerException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+	
+	
+	   //log in for customer
+		@PostMapping("/login")
+		public ResponseEntity<Object> loginCustomer(@RequestBody Map<String, String> credentials) {
+		    String userId = credentials.get("userId");
+		    String password = credentials.get("password");
+		    String enteredOtp = credentials.get("otp");
+
+		    try {
+		        customerService.verifyOtpAndLogin(userId, enteredOtp, password);
+		        return ResponseEntity.status(HttpStatus.OK).body("Login successful");
+		    } catch (CustomerException e) {
+		        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+		    }
+		}
 }
